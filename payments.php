@@ -2,7 +2,7 @@
 session_start();
 include('../config/config.php');
 require_once('../config/checklogin.php');
-client();
+admin();
 include('../config/codeGen.php');
 
 /* Pay Reservations */
@@ -207,7 +207,7 @@ require_once("../partials/head.php");
 <body>
 
     <!-- Navigation Bar-->
-    <?php require_once('../partials/client_nav.php'); ?>
+    <?php require_once('../partials/admin_nav.php'); ?>
     <!-- End Navigation Bar-->
 
 
@@ -224,7 +224,7 @@ require_once("../partials/head.php");
                         <div class="btn-group float-right m-t-15">
                             <a href="add_payment.php" class="btn btn-primary waves-effect waves-light m-r-5 m-t-10">Add Parking Lot Payment</a>
                         </div>
-                        <h4 class="page-title">My Reservations Payments</h4>
+                        <h4 class="page-title">Reservations Payments</h4>
                     </div>
                 </div>
             </div>
@@ -238,8 +238,8 @@ require_once("../partials/head.php");
                                 <tr>
                                     <th>Payment Code</th>
                                     <th>Parking Fee</th>
-                                    <th>My  Name</th>
-                                    <th>My Phone No</th>
+                                    <th>Client Name</th>
+                                    <th>Phone No</th>
                                     <th>Date Paid</th>
                                     <th>Action</th>
                                 </tr>
@@ -247,8 +247,7 @@ require_once("../partials/head.php");
 
                             <tbody>
                                 <?php
-                                $phone = $_SESSION['phone'];
-                                $ret = "SELECT * FROM `payments` WHERE client_phone = '$phone' ";
+                                $ret = 'SELECT * FROM `payments` ';
                                 $stmt = $mysqli->prepare($ret);
                                 $stmt->execute(); //ok
                                 $res = $stmt->get_result();
@@ -290,7 +289,7 @@ require_once("../partials/head.php");
                                                                         </div>
                                                                         <div class="form-group col-md-6">
                                                                             <label for="">Parking Fee</label>
-                                                                            <input type="text" readonly required name="amt" value="<?php echo $pay->amt; ?>" class="form-control">
+                                                                            <input type="text" required name="amt" value="<?php echo $pay->amt; ?>" class="form-control">
                                                                         </div>
                                                                         <div class="form-group col-md-6">
                                                                             <label for="">Payment Code</label>

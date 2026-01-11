@@ -1,85 +1,123 @@
 <?php
 session_start();
-if (!isset($mysqli)) {
-    include('../config/config.php'); // Include database configuration
-}
-require_once('../config/checklogin.php');
-client();
-include('../config/codeGen.php');
-
-if (!isset($_SESSION['id']) || !isset($_SESSION['phone'])) {
+if (!isset($_SESSION['id'])) {
     die("Error: User is not logged in.");
 }
-
-/* Add Notification Function */
-function addNotification($userId, $title, $message, $type, $mysqli) {
-    $query = "INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)";
-    $stmt = $mysqli->prepare($query);
-    if (!$stmt) {
-        die("SQL Error: " . $mysqli->error);
-    }
-    $stmt->bind_param('ssss', $userId, $title, $message, $type);
-    $stmt->execute();
-    $stmt->close();
-}
+include('../config/config.php');
+require_once('../config/checklogin.php');
+admin();
+include('../config/codeGen.php');
 
 /* Pay Reservations */
 if (isset($_POST['pay_reservations'])) {
+    //Error Handling and prevention of posting double entries
     $error = 0;
 
-    // Validate inputs
-    $id = isset($_POST['id']) ? mysqli_real_escape_string($mysqli, trim($_POST['id'])) : $error = 1;
-    $code = isset($_POST['code']) ? mysqli_real_escape_string($mysqli, trim($_POST['code'])) : $error = 1;
-    $client_name = isset($_POST['client_name']) ? mysqli_real_escape_string($mysqli, trim($_POST['client_name'])) : $error = 1;
-    $client_phone = isset($_POST['client_phone']) ? mysqli_real_escape_string($mysqli, trim($_POST['client_phone'])) : $error = 1;
-    $r_id = isset($_POST['r_id']) ? mysqli_real_escape_string($mysqli, trim($_POST['r_id'])) : $error = 1;
-    $amt = isset($_POST['amt']) ? mysqli_real_escape_string($mysqli, trim($_POST['amt'])) : $error = 1;
-    $status = isset($_POST['status']) ? mysqli_real_escape_string($mysqli, trim($_POST['status'])) : $error = 1;
-
-    if ($error) {
-        $err = 'All fields are required.';
+    if (isset($_POST['id']) && !empty($_POST['id'])) {
+        $id = mysqli_real_escape_string($mysqli, trim($_POST['id']));
     } else {
-        // Prevent double entries
-        $sql = "SELECT * FROM payments WHERE code = ?";
-        $stmt = $mysqli->prepare($sql);
-        if (!$stmt) {
-            die("SQL Error: " . $mysqli->error);
-        }
-        $stmt->bind_param('s', $code);
-        $stmt->execute();
-        $res = $stmt->get_result();
+        $error = 1;
+        $err = 'ID Cannot Be Empty';
+    }
 
-        if ($res->num_rows > 0) {
-            $err = "Payment with that code already exists.";
-        } else {
-            // Insert payment and update reservation status
-            $query = 'INSERT INTO payments (id, code, client_name, client_phone, amt, r_id) VALUES (?, ?, ?, ?, ?, ?)';
-            $reservationqry = "UPDATE reservations SET status = 'Paid' WHERE id = ?";
-            $stmt = $mysqli->prepare($query);
-            $reservationstmt = $mysqli->prepare($reservationqry);
+    if (isset($_POST['code']) && !empty($_POST['code'])) {
+        $code = mysqli_real_escape_string($mysqli, trim($_POST['code']));
+    } else {
+        $error = 1;
+        $err = 'Payment Code Cannot Be Empty';
+    }
 
-            if (!$stmt || !$reservationstmt) {
-                die("SQL Error: " . $mysqli->error);
+    if (isset($_POST['client_name']) && !empty($_POST['client_name'])) {
+        $client_name = mysqli_real_escape_string($mysqli, trim($_POST['client_name']));
+    } else {
+        $error = 1;
+        $err = 'Client Name Cannot Be Empty';
+    }
+
+    if (isset($_POST['client_phone']) && !empty($_POST['client_phone'])) {
+        $client_phone = mysqli_real_escape_string($mysqli, trim((($_POST['client_phone']))));
+    } else {
+        $error = 1;
+        $err = 'Client Phone  Cannot Be Empty';
+    }
+
+
+    if (isset($_POST['r_id']) && !empty($_POST['r_id'])) {
+        $r_id  = mysqli_real_escape_string($mysqli, trim($_POST['r_id']));
+    } else {
+        $error = 1;
+        $err = 'Parking Reservation ID Cannot  Be Empty';
+    }
+
+
+    if (isset($_POST['amt']) && !empty($_POST['amt'])) {
+        $amt = mysqli_real_escape_string($mysqli, trim($_POST['amt']));
+    } else {
+        $error = 1;
+        $err = 'Parking Amount Number Be Empty';
+    }
+
+    if (isset($_POST['status']) && !empty($_POST['status'])) {
+        $status = mysqli_real_escape_string($mysqli, trim($_POST['status']));
+    } else {
+        $error = 1;
+        $err = 'Reservation Status Number Be Empty';
+    }
+
+
+    if (!$error) {
+        //prevent Double entries
+        $sql = "SELECT * FROM  payments WHERE  code='$code' ";
+        $res = mysqli_query($mysqli, $sql);
+        if (mysqli_num_rows($res) > 0) {
+            $row = mysqli_fetch_assoc($res);
+            if (
+                $code = $row['code']
+            ) {
+                $err =  "Payment With That Code Number Already Exists ";
+            } else {
             }
+        } else {
 
-            $stmt->bind_param('ssssss', $id, $code, $client_name, $client_phone, $amt, $r_id);
-            $reservationstmt->bind_param('s', $r_id);
 
+            $query = 'INSERT INTO payments (id, code, client_name, client_phone, amt, r_id) VALUES(?,?,?,?,?,?)';
+            /* Update Reservation Status Set To Paid */
+            $reservationqry = "UPDATE reservations SET status = 'Paid' WHERE id = '$r_id'";
+            $stmt = $mysqli->prepare($query);
+            $reservationstmt = $mysqli->prepare(($reservationqry));
+            $rc = $stmt->bind_param(
+                'ssssss',
+                $id,
+                $code,
+                $client_name,
+                $client_phone,
+                $amt,
+                $r_id
+            );
             $stmt->execute();
             $reservationstmt->execute();
-
-            if ($stmt->affected_rows > 0 && $reservationstmt->affected_rows > 0) {
-                // Add notification for successful payment
-                addNotification($_SESSION['id'], 'Payment Successful', 'Your payment has been successfully processed.', 'payment', $mysqli);
-                $success = 'Payment added successfully.';
-                header('refresh:1; url=add_payment.php');
+            if ($stmt) {
+                $success = 'Client Account Parking Reservation Paid' && header('refresh:1; url=add_payment.php');
             } else {
-                // Add notification for failed payment
-                addNotification($_SESSION['id'], 'Payment Failed', 'Your payment attempt failed. Please try again.', 'payment', $mysqli);
-                $err = 'Failed to process payment. Please try again.';
+                $info = 'Please Try Again Or Try Later';
             }
         }
     }
+}
+
+$query = "SELECT * FROM reservations WHERE user_id = ? AND expiry_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+$stmt = $mysqli->prepare($query);
+if (!$stmt) {
+    die("SQL Error: " . $mysqli->error); // Debugging output
+}
+$stmt->bind_param('i', $_SESSION['id']);
+$stmt->execute();
+$result = $stmt->get_result();
+if (!$result) {
+    die("Query Execution Error: " . $stmt->error); // Debugging output
+}
+while ($booking = $result->fetch_object()) {
+    // Process the result
 }
 
 require_once("../partials/head.php");
@@ -87,10 +125,14 @@ require_once("../partials/head.php");
 
 <body>
 
-    <!-- Navigation Bar -->
-    <?php require_once('../partials/client_nav.php'); ?>
-    <!-- End Navigation Bar -->
+    <!-- Navigation Bar-->
+    <?php require_once('../partials/admin_nav.php'); ?>
+    <!-- End Navigation Bar-->
 
+
+    <!-- ============================================================== -->
+    <!-- Start right Content here -->
+    <!-- ============================================================== -->
     <div class="wrapper">
         <div class="container">
 
@@ -98,12 +140,14 @@ require_once("../partials/head.php");
             <div class="row">
                 <div class="col-sm-12">
                     <div class="page-title-box">
-                        <h4 class="page-title">My Unpaid Reservations</h4>
+                        <div class="btn-group float-right m-t-15">
+                        </div>
+                        <h4 class="page-title">Reservations Payments</h4>
                     </div>
                 </div>
             </div>
 
-            <!-- Reservations Table -->
+            <!-- end row -->
             <div class="row">
                 <div class="col-12">
                     <div class="card-box">
@@ -113,7 +157,7 @@ require_once("../partials/head.php");
                                     <th>Code</th>
                                     <th>Client Name</th>
                                     <th>Phone No</th>
-                                    <th>Car Regno</th>
+                                    <th>Vehicle no</th>
                                     <th>Lot No</th>
                                     <th>Fee</th>
                                     <th>Parking Duration</th>
@@ -124,14 +168,9 @@ require_once("../partials/head.php");
 
                             <tbody>
                                 <?php
-                                $phone = $_SESSION['phone'];
-                                $ret = "SELECT * FROM reservations WHERE status != 'Paid' AND client_phone = ?";
+                                $ret = 'SELECT * FROM `reservations` WHERE status !="Paid" ';
                                 $stmt = $mysqli->prepare($ret);
-                                if (!$stmt) {
-                                    die("SQL Error: " . $mysqli->error);
-                                }
-                                $stmt->bind_param('s', $phone);
-                                $stmt->execute();
+                                $stmt->execute(); //ok
                                 $res = $stmt->get_result();
                                 while ($reserv = $res->fetch_object()) { ?>
                                     <tr>
@@ -145,7 +184,7 @@ require_once("../partials/head.php");
                                         <td><?php echo $reserv->parking_date; ?></td>
                                         <td>
                                             <a href="#pay-<?php echo $reserv->id; ?>" data-toggle="modal" class="badge bg-warning">Add Payment</a>
-                                            <!-- Payment Modal -->
+                                            <!-- Update Modal -->
                                             <div class="modal fade" id="pay-<?php echo $reserv->id; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                                 <div class="modal-dialog modal-lg" role="document">
                                                     <div class="modal-content">
@@ -156,27 +195,28 @@ require_once("../partials/head.php");
                                                             </button>
                                                         </div>
                                                         <div class="modal-body">
-                                                            <form method="post">
+                                                            <form method="post" enctype="multipart/form-data">
                                                                 <div class="card-body">
                                                                     <div class="row">
-                                                                        <input type="hidden" name="id" value="<?php echo uniqid(); ?>" class="form-control">
-                                                                        <input type="hidden" name="r_id" value="<?php echo $reserv->id; ?>" class="form-control">
-                                                                        <input type="hidden" name="status" value="Paid" class="form-control">
+                                                                        <!-- Hide This -->
+                                                                        <input type="hidden" required name="id" value="<?php echo $ID; ?>" class="form-control">
+                                                                        <input type="hidden" required name="r_id" value="<?php echo $reserv->id; ?>" class="form-control">
+                                                                        <input type="hidden" required name="status" value="Paid" class="form-control">
                                                                         <div class="form-group col-md-6">
                                                                             <label for="">Client Phone Number</label>
-                                                                            <input type="text" value="<?php echo $reserv->client_phone; ?>" name="client_phone" class="form-control" readonly>
+                                                                            <input type="text" value="<?php echo $reserv->client_phone; ?>" required name="client_phone" class="form-control">
                                                                         </div>
                                                                         <div class="form-group col-md-6">
                                                                             <label for="">Client Name</label>
-                                                                            <input type="text" value="<?php echo $reserv->client_name; ?>" name="client_name" class="form-control" readonly>
+                                                                            <input type="text" value="<?php echo $reserv->client_name; ?>" required name="client_name" class="form-control">
                                                                         </div>
                                                                         <div class="form-group col-md-6">
                                                                             <label for="">Parking Fee</label>
-                                                                            <input type="text" name="amt" value="<?php echo $reserv->amt; ?>" class="form-control" readonly>
+                                                                            <input type="text" required name="amt" value="<?php echo $reserv->amt; ?>" class="form-control">
                                                                         </div>
                                                                         <div class="form-group col-md-6">
                                                                             <label for="">Payment Code</label>
-                                                                            <input type="text" name="code" value="<?php echo uniqid(); ?>" class="form-control" readonly>
+                                                                            <input type="text" required value="<?php echo $paycode; ?>" name="code" class="form-control">
                                                                         </div>
                                                                     </div>
                                                                     <div class="text-right">
@@ -185,15 +225,17 @@ require_once("../partials/head.php");
                                                                 </div>
                                                             </form>
                                                         </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                        <div class="modal-footer ">
+                                                            <button type="button" class="pull-left btn btn-secondary" data-dismiss="modal">Close</button>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
+
                                         </td>
                                     </tr>
                                 <?php } ?>
+
                             </tbody>
                         </table>
                     </div>
@@ -201,9 +243,11 @@ require_once("../partials/head.php");
             </div> <!-- end row -->
         </div> <!-- container -->
 
+
         <!-- Footer -->
         <?php require_once("../partials/footer.php"); ?>
         <!-- End Footer -->
+
 
     </div>
     <!-- End wrapper -->

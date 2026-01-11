@@ -2,7 +2,7 @@
 session_start();
 include('../config/config.php');
 require_once('../config/checklogin.php');
-client();
+admin();
 include('../config/codeGen.php');
 require_once("../partials/head.php");
 ?>
@@ -10,7 +10,7 @@ require_once("../partials/head.php");
 <body>
 
     <!-- Navigation Bar-->
-    <?php require_once('../partials/client_nav.php'); ?>
+    <?php require_once('../partials/admin_nav.php'); ?>
     <!-- End Navigation Bar-->
 
 
@@ -26,7 +26,7 @@ require_once("../partials/head.php");
                     <div class="page-title-box">
                         <div class="btn-group float-right m-t-15">
                         </div>
-                        <h4 class="page-title">My Recent Reservations Reports</h4>
+                        <h4 class="page-title">Reservations Reports</h4>
                     </div>
                 </div>
             </div>
@@ -39,8 +39,8 @@ require_once("../partials/head.php");
                         <table id="datatable-buttons" class="table table-bordered dt-responsive nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
                             <thead>
                                 <tr>
-                                    <th>My Name</th>
-                                    <th>My Phone No</th>
+                                    <th>Client Name</th>
+                                    <th>Phone No</th>
                                     <th>Car Regno</th>
                                     <th>Lot No</th>
                                     <th>Fee</th>
@@ -51,8 +51,7 @@ require_once("../partials/head.php");
 
                             <tbody>
                                 <?php
-                                $phone = $_SESSION['phone'];
-                                $ret = "SELECT * FROM `reservations` WHERE client_phone = '$phone' ";
+                                $ret = 'SELECT * FROM `reservations` ';
                                 $stmt = $mysqli->prepare($ret);
                                 $stmt->execute(); //ok
                                 $res = $stmt->get_result();
@@ -65,7 +64,7 @@ require_once("../partials/head.php");
                                         <td>₹ <?php echo $reserv->amt; ?></td>
                                         <td><?php echo $reserv->parking_duration; ?> Hours</td>
                                         <td><?php echo $reserv->parking_date; ?></td>
-
+                                        
                                     </tr>
                                 <?php } ?>
 
